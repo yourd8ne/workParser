@@ -1,0 +1,4 @@
+venv/
+extracted_data1.json
+extracted_data2.json
+processed_vacancies.json
