@@ -4,8 +4,15 @@ webhook_url = 'https://cloud.roistat.com/integration/webhook?key=a58c86c38a259de
 
 
 data = {
-    'key1': 'value1',
-    'key2': 'value2'
+    "title":"Название вакансии",
+    "name":"Имя контакта",
+    "email":"email контакта",
+    "phone":"телефон контакта",
+    "comment":"ссылка на вакансию",
+    "roistat_visit":"название сайта (например joblab.ru)",
+    "fields":{"site":"название сайта (например joblab.ru)",
+    "source":"название сайта (например joblab.ru)",
+    "promocode":'null'}
 }
 
 response = requests.post(webhook_url, json=data)
