@@ -26,12 +26,13 @@ def should_process_vacancy(vacancy_id, processed_vacancies):
         return True
 
 def req():
-    limit = 10
+    limit = 100
     all_data = {'metadata': {}, 'vacancies': []}
     processed_vacancies = set()   
-    for geo_id in range(1, 3):  
+    for geo_id in range(1, 11):  
         offset = 0
-        while True:
+        total_vacancies = float('inf')
+        while offset < total_vacancies:
             params = {
                 'offset': offset,
                 'limit': limit,
@@ -39,8 +40,7 @@ def req():
                 'rubric_filter_mode': 'new',
                 'geo_id': geo_id
             }
-            if offset >= 10:
-                break
+            
             req = requests.get(url=url, headers=headers, params=params)
 
             if req.status_code == 200:
@@ -48,6 +48,7 @@ def req():
                 
                 if data.get('vacancies'):
                     all_data['vacancies'].extend(data['vacancies'])
+                    total_vacancies = data['metadata'].get('result_set', {}).get('count', total_vacancies)
                     for vacancy in data['vacancies']:
                         vacancy_id = vacancy.get('id')
                         if should_process_vacancy(vacancy_id, processed_vacancies):
