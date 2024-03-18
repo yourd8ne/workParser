@@ -2,6 +2,7 @@ import json
 import requests
 from urllib.parse import urlparse
 import time
+import random
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0'
@@ -26,6 +27,31 @@ def should_process_vacancy(vacancy_id, processed_vacancies):
     else:
         return True
 
+def get_vacancy_data(id):
+    url_vac = f"https://api.zp.ru/v1/vacancies/{id}"
+    
+    time.sleep(random.randint(1, 4))
+    req = requests.get(url=url_vac, headers=headers)
+
+    if req.status_code == 200:
+        data = req.json()
+        
+        if data.get('vacancies'):
+            contact = data["vacancies"][0]['contact']
+            if len(contact) == 0:
+                return (None, None, None, None)
+            if isinstance(contact, dict):
+                name = contact.get('name', '')
+                email = contact.get('email', '')
+                phones = contact.get('phones', [])
+                phones = None if len(phones) == 0 else phones[0]['phone']
+                vacancy_address = contact.get('address', '')
+    else:
+        print(f"Error executing request: {req.status_code}\nurl: {url}")
+        return (None, None, None, None)
+
+    return name, email, phones, vacancy_address
+
 def req():
     limit = 100
     all_data = {'metadata': {}, 'vacancies': []}
@@ -38,7 +64,7 @@ def req():
     except FileNotFoundError:
         print("File 'processed_vacancies.json' not found")
 
-    for geo_id in range(1, 11):  
+    for geo_id in range(1, 112):  
         offset = 0
         total_vacancies = float('inf')
         while offset < total_vacancies:
@@ -50,7 +76,8 @@ def req():
                 'geo_id': geo_id,
                 'sort' : 'date'
             }
-            
+
+            time.sleep(random.randint(1, 4))
             req = requests.get(url=url, headers=headers, params=params)
 
             if req.status_code == 200:
@@ -76,21 +103,16 @@ def req():
     extracted_data2 = []
 
     for vacancy in all_data['vacancies']:
+
+        id_v = vacancy.get('id', '')
         full_url = vacancy.get('canonical_url', '')
         parsed_url = urlparse(full_url)
         domain = parsed_url.netloc
         vacancy_address = ''
-        
-        contact = vacancy.get('contact', {})
-        if isinstance(contact, dict):
-            name = contact.get('name', '')
-            email = contact.get('email', '')
-            phones = contact.get('phones', '')
-            # if not phones or phones == []:
-            #     continue
-            vacancy_address = contact.get('address', '')
-        else:
-            pass# vacances.contact is empty => skip current vacancie ???
+        name, email, phones, vacancy_address = get_vacancy_data(id_v)
+
+        if phones is None:
+            continue
         
         vacancy_data1 = {
             'title': vacancy.get('header', ''),
@@ -115,6 +137,8 @@ def req():
         }
         extracted_data1.append(vacancy_data1)
         extracted_data2.append(vacancy_data2)
+
+        send_webhook(vacancy_data1, vacancy_data2)
         
     with open('extracted_data1.json', 'w', encoding='utf-8') as file:
         json.dump(extracted_data1, file, ensure_ascii=False, indent=4)
@@ -122,20 +146,19 @@ def req():
         json.dump(extracted_data2, file, ensure_ascii=False, indent=4)
     save_processed_vacancies(processed_vacancies)
 
-def send_webhook():
-    with open('extracted_data1.json', 'r', encoding='utf-8') as file:
-        json_data1 = json.load(file)
-    with open('extracted_data2.json', 'r', encoding='utf-8') as file:
-        json_data2 = json.load(file)
+
+def send_webhook(json_data1, json_data2):
     webhook_url1 = 'https://cloud.roistat.com/integration/webhook?key=a58c86c38a259de63562d533d7c7edf4'
     webhook_url2 = 'https://c6ce863bb1eb.vps.myjino.ru/contacts?apiKey=Wy7RXAzSRZpD4a3q'
-    time.sleep(2)
+    time.sleep(1)
     req1 = requests.post(webhook_url1, json=json_data1)
     req2 = requests.post(webhook_url2, json=json_data2)
 
     print("Response from webhook1: ", req1.text)
     print("Response from webhook2: ", req2.text)
+
+
 if __name__ == '__main__':
-    req()
-    #send_webhook()
+    while True:
+        req()
     
